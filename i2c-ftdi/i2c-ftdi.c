@@ -18,6 +18,10 @@
 #define	I2C_M_NOSTOP		0x0100  /* no STOP */
 #define	I2C_M_RESTART		0x0200  /* repeated START */
 
+int i2c_ftdi_40k;
+module_param_named(40k, i2c_ftdi_40k, int, 0444);
+MODULE_PARM_DESC(40k, "Drop bus from 400k to 40k");
+
 int i2c_ftdi_100k;
 module_param_named(100k, i2c_ftdi_100k, int, 0444);
 MODULE_PARM_DESC(100k, "Drop bus from 400k to 100k");
@@ -39,6 +43,7 @@ module_param_named(bind232h, i2c_bind232h, int, 0444);
 MODULE_PARM_DESC(bind232h, "bind to 232h 16ton");
 
 int isft232 = 0;
+int _delay = 50;
 
 const int FTDI_IO_TIMEOUT = 5000;
 //const unsigned FTDI_I2C_FREQ = 400000;
@@ -214,7 +219,11 @@ static int ftdi_i2c_idle(struct ftdi_usb *ftdi)
 	if (ret < 0)
 		return ret;
 
-	usleep_range(100, 200);
+#if 1
+		usleep_range(_delay, 2*_delay);
+#else
+		usleep_range(100, 200);
+#endif
 	return 0;
 }
 
@@ -237,7 +246,11 @@ static int ftdi_i2c_start(struct ftdi_usb *ftdi)
 	if (ret < 0)
 		return ret;
 
-	usleep_range(100, 200);
+#if 1
+		usleep_range(_delay, 2*_delay);
+#else
+		usleep_range(100, 200);
+#endif
 
 	ftdi_mpsse_cmd_reset(&cmd);
 //	if (isft232 == 1) {
@@ -253,7 +266,11 @@ static int ftdi_i2c_start(struct ftdi_usb *ftdi)
 	if (ret < 0)
 		return ret;
 
-	usleep_range(100, 200);
+#if 1
+		usleep_range(_delay, 2*_delay);
+#else
+		usleep_range(100, 200);
+#endif
 	return 0;
 }
 
@@ -276,7 +293,11 @@ static int ftdi_i2c_stop(struct ftdi_usb *ftdi)
 	if (ret < 0)
 		return ret;
 
-	usleep_range(100, 200);
+#if 1
+		usleep_range(_delay, 2*_delay);
+#else
+		usleep_range(100, 200);
+#endif
 
 	ftdi_mpsse_cmd_reset(&cmd);
 //	if (isft232 == 1) {
@@ -292,7 +313,11 @@ static int ftdi_i2c_stop(struct ftdi_usb *ftdi)
 	if (ret < 0)
 		return ret;
 
-	usleep_range(100, 200);
+#if 1
+		usleep_range(_delay, 2*_delay);
+#else
+		usleep_range(100, 200);
+#endif
 
 //	ftdi_mpsse_cmd_reset(&cmd);
 //	if (isft232 == 1) {
@@ -308,7 +333,11 @@ static int ftdi_i2c_stop(struct ftdi_usb *ftdi)
 	if (ret < 0)
 		return ret;
 
-	usleep_range(100, 200);
+#if 1
+		usleep_range(_delay, 2*_delay);
+#else
+		usleep_range(100, 200);
+#endif
 	return 0;
 }
 
@@ -448,8 +477,11 @@ static int ftdi_usb_i2c_xfer(struct i2c_adapter *adapter,
 		ret = ftdi_i2c_write_addr(ftdi, msg[i].addr, read);
 		if (ret < 0)
 			goto err;
-
+#if 1
+		usleep_range(_delay, 2*_delay);
+#else
 		usleep_range(100, 200);
+#endif
 		if (read)
 			ret = ftdi_i2c_read_bytes(
 				ftdi, msg[i].buf, msg[i].len);
@@ -466,7 +498,11 @@ static int ftdi_usb_i2c_xfer(struct i2c_adapter *adapter,
 		if (ret < 0)
 			goto err;
 
+#if 1
+		usleep_range(_delay, 2*_delay);
+#else
 		usleep_range(100, 200);
+#endif
 	}
 
 	return num;
@@ -555,6 +591,7 @@ static int ftdi_mpsse_i2c_setup(struct ftdi_usb *ftdi)
 {
 	struct ftdi_mpsse_cmd cmd;
 	int ret;
+	//printk("[DBG]%s %d\n",__FUNCTION__,__LINE__);
 
 	ftdi_mpsse_cmd_setup(&cmd, ftdi->buffer, ftdi->buffer_size);
 	if (i2c_ftdi_adaptive)
@@ -595,7 +632,6 @@ static int ftdi_set_bit_mode(struct ftdi_usb *ftdi, u16 mode)
 		ftdi->io_timeout);
 	if (ret < 0)
 		return ret;
-
 	// After changing the mode we need to read 2 bytes of status, but since
 	// I don't know the format I read them check that it's just 2 bytes and
 	// ignore the actual values.
@@ -606,11 +642,14 @@ static int ftdi_set_bit_mode(struct ftdi_usb *ftdi, u16 mode)
 		/* actual_length = */&actual_length,
 		ftdi->io_timeout);
 	if (ret < 0)
-		return ret;
+		return ret;;
 
-	if (actual_length != 2)
-		return -EIO;
-
+	if (actual_length
+		//!= 2
+	){
+		//printk("[DBG] actual_length %d\n",actual_length);
+		//return -EIO;
+	}
 	return 0;
 }
 
@@ -661,7 +700,7 @@ static int ftdi_disable_special_characters(struct ftdi_usb *ftdi)
 static int ftdi_reset(struct ftdi_usb *ftdi)
 {
 	int ret;
-
+	//printk("[DBG]%s %d\n",__FUNCTION__,__LINE__);
 	ret = usb_control_msg(
 		ftdi->udev, usb_sndctrlpipe(ftdi->udev, 0),
 		/* bRequest = */0x00,
@@ -673,7 +712,7 @@ static int ftdi_reset(struct ftdi_usb *ftdi)
 		ftdi->io_timeout);
 	if (ret < 0)
 		return ret;
-
+	//printk("[DBG]1\n");
 	ret = usb_control_msg(
 		ftdi->udev, usb_sndctrlpipe(ftdi->udev, 0),
 		/* bRequest = */0x03,
@@ -685,7 +724,7 @@ static int ftdi_reset(struct ftdi_usb *ftdi)
 		ftdi->io_timeout);
 	if (ret < 0)
 		return ret;
-
+	//printk("[DBG]2\n");
 	ret = usb_control_msg(
 		ftdi->udev, usb_sndctrlpipe(ftdi->udev, 0),
 		/* bRequest = */0x00,
@@ -697,7 +736,7 @@ static int ftdi_reset(struct ftdi_usb *ftdi)
 		ftdi->io_timeout);
 	if (ret < 0)
 		return ret;
-
+	//printk("[DBG]3\n");
 	ret = usb_control_msg(
 		ftdi->udev, usb_sndctrlpipe(ftdi->udev, 0),
 		/* bRequest = */0x00,
@@ -709,7 +748,7 @@ static int ftdi_reset(struct ftdi_usb *ftdi)
 		ftdi->io_timeout);
 	if (ret < 0)
 		return ret;
-
+	//printk("[DBG]4\n");
 	ret = usb_control_msg(
 		ftdi->udev, usb_sndctrlpipe(ftdi->udev, 0),
 		/* bRequest = */0x00,
@@ -721,25 +760,26 @@ static int ftdi_reset(struct ftdi_usb *ftdi)
 		ftdi->io_timeout);
 	if (ret < 0)
 		return ret;
-
+	//printk("[DBG]5\n");
 	ret = ftdi_disable_special_characters(ftdi);
 	if (ret < 0)
 		return ret;
-
+	//printk("[DBG]6\n");
 	ret = ftdi_set_bit_mode(ftdi, FTDI_BIT_MODE_RESET);
 	if (ret < 0)
 		return ret;
-
+	//printk("[DBG]7\n");
 	ret = ftdi_set_bit_mode(ftdi, FTDI_BIT_MODE_MPSSE);
 	if (ret < 0)
 		return ret;
-
+	//printk("[DBG]8\n");
 	ret = ftdi_mpsse_i2c_setup(ftdi);
 	if (ret < 0)
 		return ret;
 
 //  16ton this verify errors out
 	ret = ftdi_mpsse_verify(ftdi);
+	//printk("[DBG]9\n");
 //	if (ret < 0)
 //		return ret;
 
@@ -852,11 +892,12 @@ static int ftdi_usb_probe(struct usb_interface *interface,
 	struct usb_device *dev = interface_to_usbdev(interface);
 	struct ftdi_usb *ftdi;
 	int ret;
-	int ret2;
 	int inf;
 //	int error = 0;
 //	(void) id;
-
+	unsigned short vender_id=le16_to_cpu(dev->descriptor.idVendor);
+	unsigned short product_id=le16_to_cpu(dev->descriptor.idProduct);
+	dev_info(&interface->dev,"usb vid %d pid%d\n",vender_id,product_id);
 
 	ftdi = kzalloc(sizeof(*ftdi), GFP_KERNEL);
 	if (!ftdi)
@@ -865,7 +906,9 @@ static int ftdi_usb_probe(struct usb_interface *interface,
 	ftdi->udev = usb_get_dev(dev);
 	ftdi->interface = usb_get_intf(interface);
 	inf = ftdi->interface->cur_altsetting->desc.bInterfaceNumber;
-
+	if (ftdi->udev->product) {
+		dev_info(&interface->dev,"dev %s\n",ftdi->udev->product);
+	}
 	if (ftdi->udev->product && !strcmp(ftdi->udev->product, "ft4232H-16ton")) {
 		ret = ftx232h_jtag_probe(interface);
 		if (ret < 0) {
@@ -896,14 +939,30 @@ static int ftdi_usb_probe(struct usb_interface *interface,
 				return -ENODEV;
 	} else if (i2c_bind232h) {
 	    if (ftdi->udev->product && !strcmp(ftdi->udev->product, "ft232H-16ton")) {
-	        		ret = ftx232h_single_probe(interface);
-		            if (ret < 0) {
-			            ftdi_usb_delete(ftdi);
-				        return -ENODEV;
-	                }
+			ret = ftx232h_single_probe(interface);
+			if (ret < 0) {
+				ftdi_usb_delete(ftdi);
+				return -ENODEV;
+			}
         }
-	}  else {
-    return -ENODEV;
+	} else if (ftdi->udev->product && !strcmp(ftdi->udev->product, "Dual RS232-HS")) {
+		ret = ftx232h_single_probe(interface);
+		if (ret < 0) {
+				ftdi_usb_delete(ftdi);
+				return -ENODEV;
+		}
+	}
+	else if (ftdi->udev->product && !strcmp(ftdi->udev->product, "FT2232H MiniModule")) {
+		ret = (inf==0)?
+			ftx232h_single_probe(interface):ftx232h_jtag_probe(interface);
+		if (ret < 0) {
+			ftdi_usb_delete(ftdi);
+			return -ENODEV;
+		}
+	}
+	else {
+		dev_info(&interface->dev,"no FT2232H product compatible\n");
+		return -ENODEV;
 	}
 
 
@@ -914,16 +973,20 @@ static int ftdi_usb_probe(struct usb_interface *interface,
 	ftdi->io_timeout = FTDI_IO_TIMEOUT;
 	if (i2c_ftdi_100k) {
 		ftdi->freq = 100000;
+	} else if (i2c_ftdi_40k) {
+	ftdi->freq  = 40000;
 	} else if (i2c_ftdi_1m) {
 	ftdi->freq  = 1000000;
 	} else if (i2c_ftdi_3m) {
 	ftdi->freq  = 3400000;
 	} else {
-		ftdi->freq = 400000;
+		ftdi->freq = 60000;
 	}
 
-	ret2 = ftdi->freq;
-	dev_info(&interface->dev, "probe i2cftdi freq %d\n", ret2);
+	//_delay=((5*1000000)/ftdi->freq);
+	_delay= 10;
+	dev_info(&interface->dev, "probe i2cftdi freq %d, stream delay %d\n"
+	,ftdi->freq,_delay);
 //	ftdi->freq = FTDI_I2C_FREQ;
 	ftdi->buffer = kzalloc(FTDI_IO_BUFFER_SIZE, GFP_KERNEL);
 	ftdi->buffer_size = FTDI_IO_BUFFER_SIZE;
